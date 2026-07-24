@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SnapshotRouteImport } from './routes/snapshot'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as MatchesRouteImport } from './routes/matches'
+import { Route as CoverLetterRouteImport } from './routes/cover-letter'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 
@@ -30,6 +32,16 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MatchesRoute = MatchesRouteImport.update({
+  id: '/matches',
+  path: '/matches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoverLetterRoute = CoverLetterRouteImport.update({
+  id: '/cover-letter',
+  path: '/cover-letter',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +55,8 @@ const SitemapXmlRoute = SitemapXmlRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cover-letter': typeof CoverLetterRoute
+  '/matches': typeof MatchesRoute
   '/profile': typeof ProfileRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
@@ -50,6 +64,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cover-letter': typeof CoverLetterRoute
+  '/matches': typeof MatchesRoute
   '/profile': typeof ProfileRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
@@ -58,6 +74,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/cover-letter': typeof CoverLetterRoute
+  '/matches': typeof MatchesRoute
   '/profile': typeof ProfileRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
@@ -65,14 +83,38 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
+  fullPaths:
+    | '/'
+    | '/cover-letter'
+    | '/matches'
+    | '/profile'
+    | '/snapshot'
+    | '/upload'
+    | '/sitemap/xml'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
-  id: '__root__' | '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
+  to:
+    | '/'
+    | '/cover-letter'
+    | '/matches'
+    | '/profile'
+    | '/snapshot'
+    | '/upload'
+    | '/sitemap/xml'
+  id:
+    | '__root__'
+    | '/'
+    | '/cover-letter'
+    | '/matches'
+    | '/profile'
+    | '/snapshot'
+    | '/upload'
+    | '/sitemap/xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CoverLetterRoute: typeof CoverLetterRoute
+  MatchesRoute: typeof MatchesRoute
   ProfileRoute: typeof ProfileRoute
   SnapshotRoute: typeof SnapshotRoute
   UploadRoute: typeof UploadRoute
@@ -102,6 +144,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/matches': {
+      id: '/matches'
+      path: '/matches'
+      fullPath: '/matches'
+      preLoaderRoute: typeof MatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cover-letter': {
+      id: '/cover-letter'
+      path: '/cover-letter'
+      fullPath: '/cover-letter'
+      preLoaderRoute: typeof CoverLetterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +177,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CoverLetterRoute: CoverLetterRoute,
+  MatchesRoute: MatchesRoute,
   ProfileRoute: ProfileRoute,
   SnapshotRoute: SnapshotRoute,
   UploadRoute: UploadRoute,
