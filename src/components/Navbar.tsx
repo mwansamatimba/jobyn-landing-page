@@ -6,6 +6,7 @@ const navLinks = [
   { label: "Upload CV", to: "/upload" },
   { label: "Snapshot", to: "/snapshot" },
   { label: "Profile", to: "/profile" },
+  { label: "Career Coach", to: "/coach" },
   { label: "Matches", to: "/matches" },
   { label: "Cover Letter", to: "/cover-letter" },
 ];
