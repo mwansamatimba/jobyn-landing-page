@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Jobyn AI — AI-Powered Career Assistant" },
+      { name: "description", content: "Jobyn AI helps you land your next role with AI resume analysis, smart job matching, and personalized cover letters." },
+      { name: "author", content: "Jobyn AI" },
+      { property: "og:title", content: "Jobyn AI — AI-Powered Career Assistant" },
+      { property: "og:description", content: "AI resume analysis, smart job matching, and personalized cover letters in one place." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@JobynAI" },
     ],
     links: [
       {
