@@ -225,9 +225,7 @@ function Features() {
               key={feature.title}
               className="group rounded-2xl border border-border bg-background p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5"
             >
-              <div
-                className={`grid h-12 w-12 place-items-center rounded-xl transition-colors ${feature.color}`}
-              >
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary transition-colors">
                 <feature.icon className="h-6 w-6" />
               </div>
               <h3 className="mt-5 text-xl font-semibold text-foreground">
