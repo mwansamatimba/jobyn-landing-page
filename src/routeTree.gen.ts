@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as SnapshotRouteImport } from './routes/snapshot'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
@@ -17,6 +18,11 @@ import { Route as SitemapXmlRouteImport } from './routes/sitemap.xml'
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SnapshotRoute = SnapshotRouteImport.update({
+  id: '/snapshot',
+  path: '/snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -38,12 +44,14 @@ const SitemapXmlRoute = SitemapXmlRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
+  '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
   '/sitemap/xml': typeof SitemapXmlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
+  '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
   '/sitemap/xml': typeof SitemapXmlRoute
 }
@@ -51,20 +59,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/profile': typeof ProfileRoute
+  '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
   '/sitemap/xml': typeof SitemapXmlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/profile' | '/upload' | '/sitemap/xml'
+  fullPaths: '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/profile' | '/upload' | '/sitemap/xml'
-  id: '__root__' | '/' | '/profile' | '/upload' | '/sitemap/xml'
+  to: '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
+  id: '__root__' | '/' | '/profile' | '/snapshot' | '/upload' | '/sitemap/xml'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProfileRoute: typeof ProfileRoute
+  SnapshotRoute: typeof SnapshotRoute
   UploadRoute: typeof UploadRoute
   SitemapXmlRoute: typeof SitemapXmlRoute
 }
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/upload'
       preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/snapshot': {
+      id: '/snapshot'
+      path: '/snapshot'
+      fullPath: '/snapshot'
+      preLoaderRoute: typeof SnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProfileRoute: ProfileRoute,
+  SnapshotRoute: SnapshotRoute,
   UploadRoute: UploadRoute,
   SitemapXmlRoute: SitemapXmlRoute,
 }
