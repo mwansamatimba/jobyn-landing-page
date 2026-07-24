@@ -92,6 +92,9 @@
   --primary-glow: oklch(0.65 0.22 250);
   --surface: oklch(0.98 0.01 250);
   --surface-foreground: oklch(0.2 0.05 250);
+  --emerald: oklch(0.62 0.15 165);
+  --emerald-foreground: oklch(1 0 0);
+  --emerald-soft: oklch(0.95 0.05 165);
 
   --chart-1: oklch(0.55 0.185 250);
   --chart-2: oklch(0.65 0.22 250);
