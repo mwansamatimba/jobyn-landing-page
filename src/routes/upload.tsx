@@ -4,8 +4,8 @@ import { Upload, FileText, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
