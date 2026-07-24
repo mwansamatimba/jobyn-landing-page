@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { Menu, X, Sparkles } from "lucide-react";
 
 const navLinks = [
-  { label: "Features", to: "/#features" },
-  { label: "Upload CV", to: "/#upload" },
-  { label: "Pricing", to: "/#pricing" },
-  { label: "About", to: "/#about" },
+  { label: "Upload CV", to: "/upload" },
+  { label: "Snapshot", to: "/snapshot" },
+  { label: "Profile", to: "/profile" },
+  { label: "Matches", to: "/matches" },
+  { label: "Cover Letter", to: "/cover-letter" },
 ];
 
 export function Navbar() {
@@ -42,10 +43,10 @@ export function Navbar() {
             Log in
           </Link>
           <Link
-            to="/#upload"
+            to="/upload"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
-            Get started
+            Upload CV
           </Link>
         </div>
 
@@ -81,11 +82,11 @@ export function Navbar() {
                 Log in
               </Link>
               <Link
-                to="/#upload"
+                to="/upload"
                 onClick={() => setIsOpen(false)}
                 className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                Get started
+                Upload CV
               </Link>
             </div>
           </nav>

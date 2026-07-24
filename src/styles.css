@@ -47,6 +47,9 @@
   --color-primary-glow: var(--primary-glow);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
+  --color-emerald: var(--emerald);
+  --color-emerald-foreground: var(--emerald-foreground);
+  --color-emerald-soft: var(--emerald-soft);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -89,6 +92,9 @@
   --primary-glow: oklch(0.65 0.22 250);
   --surface: oklch(0.98 0.01 250);
   --surface-foreground: oklch(0.2 0.05 250);
+  --emerald: oklch(0.62 0.15 165);
+  --emerald-foreground: oklch(1 0 0);
+  --emerald-soft: oklch(0.95 0.05 165);
 
   --chart-1: oklch(0.55 0.185 250);
   --chart-2: oklch(0.65 0.22 250);
@@ -130,6 +136,9 @@
   --primary-glow: oklch(0.75 0.2 250);
   --surface: oklch(0.2 0.05 250);
   --surface-foreground: oklch(0.985 0.005 250);
+  --emerald: oklch(0.7 0.16 165);
+  --emerald-foreground: oklch(0.1 0.02 250);
+  --emerald-soft: oklch(0.28 0.08 165);
 
   --chart-1: oklch(0.65 0.18 250);
   --chart-2: oklch(0.75 0.2 250);

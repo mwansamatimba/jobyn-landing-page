@@ -74,20 +74,20 @@ function Hero() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>AI-powered career assistant</span>
+              <span>AI Career Intelligence Platform</span>
             </div>
             <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Land your next role with{" "}
-              <span className="text-primary">Jobyn AI</span>
+              Discover how AI sees{" "}
+              <span className="text-primary">your career</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground">
-              Upload your CV and let our AI analyze your resume, match you with
-              relevant jobs, and generate personalized cover letters — all in one
-              place.
+              Upload your CV to receive a personalized career profile,
+              intelligent job matches, and application-ready documents — in
+              under a minute.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
-                to="/#upload"
+                to="/upload"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30"
               >
                 Upload Your CV
@@ -319,7 +319,7 @@ function FinalCTA() {
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
-            to="/#upload"
+            to="/upload"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/30"
           >
             Upload Your CV
