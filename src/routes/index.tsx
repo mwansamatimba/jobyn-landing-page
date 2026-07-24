@@ -44,21 +44,18 @@ const features = [
     title: "Resume Analysis",
     description:
       "Get instant, actionable feedback on your CV. Jobyn AI checks structure, keywords, and impact so recruiters notice you.",
-    color: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300",
   },
   {
     icon: Briefcase,
     title: "Job Matching",
     description:
       "Discover roles that fit your skills and goals. Our AI scans thousands of listings and ranks them by your personal fit.",
-    color: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-300",
   },
   {
     icon: PenTool,
     title: "AI Cover Letter Generator",
     description:
       "Generate tailored cover letters in seconds. Each one is crafted for the specific job and your unique experience.",
-    color: "bg-sky-50 text-sky-600 dark:bg-sky-950/30 dark:text-sky-300",
   },
 ];
 
