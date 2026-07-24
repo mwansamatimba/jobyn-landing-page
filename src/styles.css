@@ -47,6 +47,9 @@
   --color-primary-glow: var(--primary-glow);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
+  --color-emerald: var(--emerald);
+  --color-emerald-foreground: var(--emerald-foreground);
+  --color-emerald-soft: var(--emerald-soft);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
