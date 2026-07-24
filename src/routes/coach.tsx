@@ -171,7 +171,60 @@ const coachData = {
   ],
 };
 
+const reasoningData = {
+  evidence: [
+    {
+      icon: "briefcase",
+      label: "Years of experience",
+      value: "4+ years",
+      detail: "Aggregated across 3 professional roles in your resume.",
+    },
+    {
+      icon: "layers",
+      label: "Technical skills extracted",
+      value: "12 skills",
+      detail: "Python, FastAPI, SQL, PostgreSQL, REST APIs, Git, and more.",
+    },
+    {
+      icon: "graduation",
+      label: "Education analyzed",
+      value: "BSc Computer Science",
+      detail: "Undergraduate degree with relevant coursework detected.",
+    },
+    {
+      icon: "scan",
+      label: "Previous roles categorized",
+      value: "Backend / Full-stack",
+      detail: "Roles clustered by responsibilities, tools, and outcomes.",
+    },
+  ],
+  reasoning: [
+    "Your experience with Python APIs, databases, and backend projects suggests strong alignment with Backend Developer roles.",
+    "Consistent delivery signals across roles indicate readiness for mid-level responsibility.",
+    "Cloud & containerization gaps explain why senior-level matches are currently below 80%.",
+  ],
+  explanations: [
+    {
+      role: "Backend Developer",
+      why: "Your programming experience and API development skills match common backend engineering requirements.",
+      badges: ["Python", "REST APIs", "SQL", "FastAPI"],
+    },
+    {
+      role: "Data Analyst",
+      why: "Strong SQL foundation and structured problem-solving transfer well into analytical roles.",
+      badges: ["SQL", "Python", "Data Modeling"],
+    },
+    {
+      role: "Cloud Engineer",
+      why: "Systems thinking and backend fundamentals form a solid base for cloud infrastructure work.",
+      badges: ["Backend", "APIs", "Linux"],
+    },
+  ],
+};
+
 // -------------------- Helper components --------------------
+
+
 
 function ScoreRing({ value }: { value: number }) {
   const radius = 54;
