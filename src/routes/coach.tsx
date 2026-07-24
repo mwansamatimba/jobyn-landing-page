@@ -370,7 +370,145 @@ function CoachPage() {
             </Card>
           </section>
 
+          {/* AI Reasoning & Evidence */}
+          <section>
+            <SectionHeader
+              eyebrow="Explainable AI"
+              title="How AI generated your career insights"
+              description="Full transparency into the evidence, reasoning, and explanations behind every recommendation."
+            />
+            <Card className="relative overflow-hidden p-6 sm:p-8">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
+              <div className="relative grid gap-8 lg:grid-cols-3">
+                {/* Evidence */}
+                <div>
+                  <div className="flex items-center gap-2 text-primary">
+                    <FileSearch className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      Resume evidence detected
+                    </span>
+                  </div>
+                  <ul className="mt-4 space-y-3">
+                    {reasoningData.evidence.map((e) => {
+                      const Icon =
+                        e.icon === "briefcase"
+                          ? Briefcase
+                          : e.icon === "layers"
+                            ? Layers
+                            : e.icon === "graduation"
+                              ? GraduationCap
+                              : ScanLine;
+                      return (
+                        <li
+                          key={e.label}
+                          className="flex items-start gap-3 rounded-lg border border-border/60 bg-background/60 p-3 backdrop-blur-sm"
+                        >
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {e.label}
+                              </p>
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] uppercase tracking-wider"
+                              >
+                                Detected
+                              </Badge>
+                            </div>
+                            <p className="mt-0.5 text-sm font-semibold text-foreground">
+                              {e.value}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {e.detail}
+                            </p>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                {/* Reasoning timeline */}
+                <div>
+                  <div className="flex items-center gap-2 text-primary">
+                    <Brain className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      AI reasoning
+                    </span>
+                  </div>
+                  <ol className="relative mt-4 space-y-4 border-l border-primary/20 pl-6">
+                    {reasoningData.reasoning.map((step, i) => (
+                      <li key={i} className="relative">
+                        <span className="absolute -left-[29px] grid h-6 w-6 place-items-center rounded-full border border-primary/30 bg-background text-[11px] font-semibold text-primary">
+                          {i + 1}
+                        </span>
+                        <p className="text-sm leading-relaxed text-foreground">
+                          {step}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="mt-5 flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+                    <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <p className="text-xs text-muted-foreground">
+                      Reasoning steps are generated from your resume signals and
+                      current job market patterns.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Recommendation explanations */}
+                <div>
+                  <div className="flex items-center gap-2 text-primary">
+                    <Lightbulb className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      Recommendation explanation
+                    </span>
+                  </div>
+                  <ul className="mt-4 space-y-3">
+                    {reasoningData.explanations.map((e) => (
+                      <li
+                        key={e.role}
+                        className="rounded-lg border border-border/60 bg-background/60 p-4 backdrop-blur-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Target className="h-3.5 w-3.5 text-primary" />
+                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                            Career recommendation
+                          </p>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {e.role}
+                        </p>
+                        <p className="mt-2 text-xs font-medium text-muted-foreground">
+                          Why:
+                        </p>
+                        <p className="mt-0.5 text-sm text-foreground">{e.why}</p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {e.badges.map((b) => (
+                            <Badge
+                              key={b}
+                              variant="secondary"
+                              className="gap-1 text-xs"
+                            >
+                              <CheckCircle2 className="h-3 w-3 text-primary" />
+                              {b}
+                            </Badge>
+                          ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </Card>
+          </section>
+
           {/* Strengths */}
+
           <section>
             <SectionHeader
               eyebrow="Strengths"
