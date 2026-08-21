@@ -46,12 +46,23 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Log in
-          </Link>
+          {signedIn ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Log out
+            </button>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Log in
+            </Link>
+          )}
+
           <Link
             to="/upload"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
