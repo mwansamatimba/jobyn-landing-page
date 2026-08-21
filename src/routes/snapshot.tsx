@@ -23,6 +23,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { mergeSnapshot, type SnapshotData } from "@/lib/snapshot-data";
+import { getStoredResumeResult, isProcessing } from "@/lib/resume";
+
 
 export const Route = createFileRoute("/snapshot")({
   head: () => ({
