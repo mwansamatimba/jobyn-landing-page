@@ -74,11 +74,27 @@ const demoSnapshot: SnapshotData = {
 };
 
 function SnapshotPage() {
+  const [raw, setRaw] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    setRaw(getStoredResumeResult<Record<string, unknown>>());
+  }, []);
+
+  const snapshot = mergeSnapshot(demoSnapshot, raw);
+  const parsing = isProcessing(raw);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
       <main className="flex-1">
+        {parsing && (
+          <div className="border-b border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm text-foreground">
+            Your resume is still being parsed by our AI — insights below will update once
+            processing completes.
+          </div>
+        )}
         {/* Hero */}
+
         <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-b from-primary/[0.04] via-background to-background">
           <div className="pointer-events-none absolute inset-0 hero-glow" aria-hidden />
           <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
