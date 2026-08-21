@@ -94,7 +94,7 @@ function Hero() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                to="/#features"
+                to="/" hash="features"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-base font-semibold text-foreground transition-colors hover:bg-accent"
               >
                 Explore features
@@ -326,7 +326,7 @@ function FinalCTA() {
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            to="/#features"
+            to="/" hash="features"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-6 py-3 text-base font-semibold text-foreground transition-colors hover:bg-accent"
           >
             See how it works
