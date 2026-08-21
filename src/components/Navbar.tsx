@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, X, Sparkles } from "lucide-react";
+import { isAuthenticated, logout } from "@/lib/auth";
+
 
 const navLinks = [
   { label: "Upload CV", to: "/upload" },
