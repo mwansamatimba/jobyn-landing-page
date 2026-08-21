@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Menu, X, Sparkles } from "lucide-react";
+import { isAuthenticated, logout } from "@/lib/auth";
+
 
 const navLinks = [
   { label: "Upload CV", to: "/upload" },
@@ -13,6 +15,22 @@ const navLinks = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setSignedIn(isAuthenticated());
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    setSignedIn(false);
+    navigate({ to: "/" });
+  };
+
+
+
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
@@ -37,12 +55,23 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            to="/"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Log in
-          </Link>
+          {signedIn ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Log out
+            </button>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Log in
+            </Link>
+          )}
+
           <Link
             to="/upload"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
@@ -76,12 +105,27 @@ export function Navbar() {
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-border/50 pt-3">
-              <Link
-                to="/"
-                className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Log in
-              </Link>
+              {signedIn ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Log out
+                </button>
+              ) : (
+                <Link
+                  to="/auth"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Log in
+                </Link>
+              )}
+
               <Link
                 to="/upload"
                 onClick={() => setIsOpen(false)}

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, FileText, AlertCircle, X, Loader2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,10 @@ import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { isAuthenticated } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
+import { isProcessing, storeResumeResult, uploadResume, type ResumeUploadResponse } from "@/lib/resume";
+
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -54,12 +58,20 @@ function UploadPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [stepIndex, setStepIndex] = useState(-1);
+  const [result, setResult] = useState<ResumeUploadResponse | null>(null);
+  const [signedIn, setSignedIn] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSignedIn(isAuthenticated());
+  }, []);
 
   const handleFile = useCallback((selected: File) => {
     setError(null);
+    setAuthError(false);
     setProgress(0);
     const err = validate(selected);
     if (err) {
@@ -72,31 +84,44 @@ function UploadPage() {
     setStatus("idle");
   }, []);
 
-  const startUpload = useCallback(() => {
+  const startUpload = useCallback(async () => {
     if (!file) return;
+    if (!isAuthenticated()) {
+      setSignedIn(false);
+      setAuthError(true);
+      setError("Please sign in before uploading your CV.");
+      setStatus("error");
+      return;
+    }
+
     setStatus("uploading");
     setProgress(0);
     setError(null);
+    setAuthError(false);
+    setResult(null);
 
-    // Simulated upload progress
-    let p = 0;
-    const uploadTimer = setInterval(() => {
-      p += 12;
-      setProgress(Math.min(p, 100));
-      if (p >= 100) {
-        clearInterval(uploadTimer);
-        setStatus("processing");
-        setStepIndex(0);
-      }
-    }, 90);
+    try {
+      const data = await uploadResume(file, setProgress);
+      storeResumeResult(data);
+      setResult(data);
+      setStatus("processing");
+      setStepIndex(1);
+    } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      setAuthError(apiErr?.status === 401);
+      if (apiErr?.status === 401) setSignedIn(false);
+      setError(apiErr ? apiErr.message : "Upload failed. Please try again.");
+      setStatus("error");
+    }
   }, [file]);
 
-  // Run through processing steps then navigate to snapshot
+  // Advance the AI pipeline steps once the backend has accepted the file,
+  // then hand off to the snapshot page.
   useEffect(() => {
     if (status !== "processing") return;
     if (stepIndex >= PROCESSING_STEPS.length) {
       setStatus("done");
-      const t = setTimeout(() => navigate({ to: "/snapshot" }), 500);
+      const t = setTimeout(() => navigate({ to: "/snapshot" }), 600);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setStepIndex((i) => i + 1), 700);
@@ -108,11 +133,15 @@ function UploadPage() {
     setStatus("idle");
     setProgress(0);
     setError(null);
+    setAuthError(false);
     setStepIndex(-1);
+    setResult(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const showProcessing = status === "processing" || status === "done";
+  const backendProcessing = isProcessing(result);
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -143,8 +172,11 @@ function UploadPage() {
                     Building your Career Snapshot
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Our AI is analyzing {file?.name} in real time.
+                    {backendProcessing
+                      ? `Your resume is queued for AI parsing — ${file?.name}`
+                      : `Our AI is analyzing ${file?.name ?? "your resume"} in real time.`}
                   </p>
+
                 </div>
               </div>
 
@@ -281,9 +313,28 @@ function UploadPage() {
                   className="mt-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
                 >
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
+                  <div className="text-sm text-destructive">
+                    <p>{error}</p>
+                    {authError && (
+                      <Link to="/auth" className="mt-1 inline-block font-medium underline">
+                        Sign in to continue
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {!signedIn && !authError && (
+                <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+                  You need an account to analyze a CV.{" "}
+                  <Link to="/auth" className="font-medium text-primary underline">
+                    Sign in or register
+                  </Link>
+                  .
+                </div>
+              )}
+
+
 
               <div className="mt-6 flex justify-end">
                 <Button
