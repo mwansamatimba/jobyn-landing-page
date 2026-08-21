@@ -172,8 +172,11 @@ function UploadPage() {
                     Building your Career Snapshot
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    Our AI is analyzing {file?.name} in real time.
+                    {backendProcessing
+                      ? `Your resume is queued for AI parsing — ${file?.name}`
+                      : `Our AI is analyzing ${file?.name ?? "your resume"} in real time.`}
                   </p>
+
                 </div>
               </div>
 
