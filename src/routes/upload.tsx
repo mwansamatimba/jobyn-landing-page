@@ -58,12 +58,20 @@ function UploadPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [stepIndex, setStepIndex] = useState(-1);
+  const [result, setResult] = useState<ResumeUploadResponse | null>(null);
+  const [signedIn, setSignedIn] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSignedIn(isAuthenticated());
+  }, []);
 
   const handleFile = useCallback((selected: File) => {
     setError(null);
+    setAuthError(false);
     setProgress(0);
     const err = validate(selected);
     if (err) {
@@ -76,31 +84,44 @@ function UploadPage() {
     setStatus("idle");
   }, []);
 
-  const startUpload = useCallback(() => {
+  const startUpload = useCallback(async () => {
     if (!file) return;
+    if (!isAuthenticated()) {
+      setSignedIn(false);
+      setAuthError(true);
+      setError("Please sign in before uploading your CV.");
+      setStatus("error");
+      return;
+    }
+
     setStatus("uploading");
     setProgress(0);
     setError(null);
+    setAuthError(false);
+    setResult(null);
 
-    // Simulated upload progress
-    let p = 0;
-    const uploadTimer = setInterval(() => {
-      p += 12;
-      setProgress(Math.min(p, 100));
-      if (p >= 100) {
-        clearInterval(uploadTimer);
-        setStatus("processing");
-        setStepIndex(0);
-      }
-    }, 90);
+    try {
+      const data = await uploadResume(file, setProgress);
+      storeResumeResult(data);
+      setResult(data);
+      setStatus("processing");
+      setStepIndex(1);
+    } catch (err) {
+      const apiErr = err instanceof ApiError ? err : null;
+      setAuthError(apiErr?.status === 401);
+      if (apiErr?.status === 401) setSignedIn(false);
+      setError(apiErr ? apiErr.message : "Upload failed. Please try again.");
+      setStatus("error");
+    }
   }, [file]);
 
-  // Run through processing steps then navigate to snapshot
+  // Advance the AI pipeline steps once the backend has accepted the file,
+  // then hand off to the snapshot page.
   useEffect(() => {
     if (status !== "processing") return;
     if (stepIndex >= PROCESSING_STEPS.length) {
       setStatus("done");
-      const t = setTimeout(() => navigate({ to: "/snapshot" }), 500);
+      const t = setTimeout(() => navigate({ to: "/snapshot" }), 600);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setStepIndex((i) => i + 1), 700);
@@ -112,11 +133,15 @@ function UploadPage() {
     setStatus("idle");
     setProgress(0);
     setError(null);
+    setAuthError(false);
     setStepIndex(-1);
+    setResult(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const showProcessing = status === "processing" || status === "done";
+  const backendProcessing = isProcessing(result);
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
