@@ -16,10 +16,19 @@ const navLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setSignedIn(isAuthenticated());
   }, []);
+
+  const handleLogout = () => {
+    logout();
+    setSignedIn(false);
+    navigate({ to: "/" });
+  };
+
+
 
 
 
