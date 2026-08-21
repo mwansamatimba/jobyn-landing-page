@@ -36,8 +36,9 @@ export const Route = createFileRoute("/snapshot")({
   component: SnapshotPage,
 });
 
-// --- Mock AI-generated snapshot (would come from the analysis pipeline) ---
-const snapshot = {
+// Placeholder values, used only until the backend response supplies real data.
+const demoSnapshot: SnapshotData = {
+
   candidateName: "Alex Morgan",
   headline: "Senior Frontend Engineer · 7 yrs experience",
   careerLevel: { label: "Senior", tier: "IC5 / L5 equivalent", progress: 78 },
