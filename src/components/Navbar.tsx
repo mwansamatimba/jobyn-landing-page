@@ -96,12 +96,27 @@ export function Navbar() {
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-border/50 pt-3">
-              <Link
-                to="/"
-                className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Log in
-              </Link>
+              {signedIn ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                  className="rounded-md px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Log out
+                </button>
+              ) : (
+                <Link
+                  to="/auth"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Log in
+                </Link>
+              )}
+
               <Link
                 to="/upload"
                 onClick={() => setIsOpen(false)}
