@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, FileText, AlertCircle, X, Loader2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,10 @@ import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { isAuthenticated } from "@/lib/auth";
+import { ApiError } from "@/lib/api";
+import { isProcessing, storeResumeResult, uploadResume, type ResumeUploadResponse } from "@/lib/resume";
+
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
