@@ -313,9 +313,28 @@ function UploadPage() {
                   className="mt-6 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
                 >
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-                  <p className="text-sm text-destructive">{error}</p>
+                  <div className="text-sm text-destructive">
+                    <p>{error}</p>
+                    {authError && (
+                      <Link to="/auth" className="mt-1 inline-block font-medium underline">
+                        Sign in to continue
+                      </Link>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {!signedIn && !authError && (
+                <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5 p-4 text-sm text-foreground">
+                  You need an account to analyze a CV.{" "}
+                  <Link to="/auth" className="font-medium text-primary underline">
+                    Sign in or register
+                  </Link>
+                  .
+                </div>
+              )}
+
+
 
               <div className="mt-6 flex justify-end">
                 <Button
