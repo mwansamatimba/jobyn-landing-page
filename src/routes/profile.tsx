@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Briefcase,
   GraduationCap,
@@ -9,14 +10,24 @@ import {
   Phone,
   Award,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ApiError } from "@/lib/api";
+import {
+  fetchCandidateProfile,
+  getCandidateId,
+  type CandidateProfile,
+} from "@/lib/candidate-profile";
+
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
