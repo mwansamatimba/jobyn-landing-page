@@ -110,7 +110,23 @@ function ProfilePage() {
       <Navbar />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-16">
+          {loading && (
+            <div className="mb-8 space-y-4">
+              <Skeleton className="h-40 w-full rounded-xl" />
+              <div className="grid gap-8 lg:grid-cols-3">
+                <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
+                <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            </div>
+          )}
+          {!loading && error && (
+            <Alert variant="destructive" className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           {/* Header */}
+
           <Card className="mb-8 p-6 sm:p-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <Avatar className="h-20 w-20 border-2 border-primary/20">
