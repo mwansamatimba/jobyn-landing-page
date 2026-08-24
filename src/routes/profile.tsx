@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Briefcase,
   GraduationCap,
@@ -9,14 +10,24 @@ import {
   Phone,
   Award,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { ApiError } from "@/lib/api";
+import {
+  fetchCandidateProfile,
+  getCandidateId,
+  type CandidateProfile,
+} from "@/lib/candidate-profile";
+
 
 export const Route = createFileRoute("/profile")({
   head: () => ({
@@ -32,94 +43,6 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
-// --- Mock candidate data (would come from the resume-parsing API) ---
-const candidate = {
-  name: "Alex Morgan",
-  headline: "Senior Frontend Engineer",
-  location: "Berlin, Germany",
-  email: "alex.morgan@example.com",
-  phone: "+49 30 1234 5678",
-  summary:
-    "Product-minded frontend engineer with 7+ years building performant web apps in React, TypeScript and modern tooling. Passionate about design systems, DX, and shipping quickly.",
-  completion: {
-    score: 82,
-    sections: [
-      { label: "Contact info", done: true },
-      { label: "Work experience", done: true },
-      { label: "Education", done: true },
-      { label: "Skills", done: true },
-      { label: "Portfolio links", done: false },
-      { label: "Certifications", done: false },
-    ],
-  },
-  skills: [
-    { name: "React", level: "Expert" },
-    { name: "TypeScript", level: "Expert" },
-    { name: "Next.js", level: "Advanced" },
-    { name: "Tailwind CSS", level: "Advanced" },
-    { name: "Node.js", level: "Intermediate" },
-    { name: "GraphQL", level: "Intermediate" },
-    { name: "Design Systems", level: "Advanced" },
-    { name: "Testing (Vitest, Playwright)", level: "Advanced" },
-    { name: "AWS", level: "Intermediate" },
-    { name: "Figma", level: "Intermediate" },
-  ],
-  experience: [
-    {
-      role: "Senior Frontend Engineer",
-      company: "Northwind Labs",
-      location: "Berlin, Germany",
-      period: "2022 — Present",
-      bullets: [
-        "Led migration from CRA to Next.js App Router, cutting TTI by 43%.",
-        "Built internal design system used by 6 product teams.",
-        "Mentored 4 mid-level engineers; ran hiring loops.",
-      ],
-    },
-    {
-      role: "Frontend Engineer",
-      company: "Cobalt Health",
-      location: "Remote",
-      period: "2019 — 2022",
-      bullets: [
-        "Owned patient-facing dashboard used by 120k monthly users.",
-        "Introduced Playwright end-to-end tests, reducing regressions by 60%.",
-      ],
-    },
-    {
-      role: "Junior Web Developer",
-      company: "Studio Kite",
-      location: "London, UK",
-      period: "2017 — 2019",
-      bullets: [
-        "Delivered 20+ client marketing sites on tight timelines.",
-        "Introduced component library, cutting new-site setup from days to hours.",
-      ],
-    },
-  ],
-  education: [
-    {
-      degree: "B.Sc. Computer Science",
-      school: "University of Manchester",
-      period: "2013 — 2017",
-      detail: "First-class honours. Focus on HCI and distributed systems.",
-    },
-    {
-      degree: "Frontend Masters — Advanced React",
-      school: "Frontend Masters",
-      period: "2021",
-      detail: "Certificate of completion.",
-    },
-  ],
-  recommendedRoles: [
-    { title: "Staff Frontend Engineer", match: 94 },
-    { title: "Frontend Tech Lead", match: 91 },
-    { title: "Senior Full-Stack Engineer", match: 84 },
-    { title: "Design Systems Engineer", match: 82 },
-    { title: "Web Platform Engineer", match: 78 },
-  ],
-};
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -129,16 +52,81 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+const EMPTY_PROFILE: CandidateProfile = {
+  name: "Candidate",
+  headline: "Professional",
+  location: "",
+  email: "",
+  phone: "",
+  summary: "",
+  completion: { score: 0, sections: [] },
+  skills: [],
+  experience: [],
+  education: [],
+  recommendedRoles: [],
+};
+
 function ProfilePage() {
+  const [candidate, setCandidate] = useState<CandidateProfile>(EMPTY_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const candidateId = getCandidateId();
+    if (!candidateId) {
+      setLoading(false);
+      setError(
+        "No candidate profile found yet. Upload your CV to generate your profile.",
+      );
+      return;
+    }
+    fetchCandidateProfile(candidateId)
+      .then((data) => {
+        if (!active) return;
+        setCandidate(data);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(
+          err instanceof ApiError ? err.message : "Could not load your profile. Please try again.",
+        );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const { completion } = candidate;
   const done = completion.sections.filter((s) => s.done).length;
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-16">
+          {loading && (
+            <div className="mb-8 space-y-4">
+              <Skeleton className="h-40 w-full rounded-xl" />
+              <div className="grid gap-8 lg:grid-cols-3">
+                <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
+                <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            </div>
+          )}
+          {!loading && error && (
+            <Alert variant="destructive" className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           {/* Header */}
+
           <Card className="mb-8 p-6 sm:p-8">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <Avatar className="h-20 w-20 border-2 border-primary/20">
@@ -152,15 +140,21 @@ function ProfilePage() {
                 </h1>
                 <p className="mt-1 text-lg text-muted-foreground">{candidate.headline}</p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" /> {candidate.location}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="h-4 w-4" /> {candidate.email}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="h-4 w-4" /> {candidate.phone}
-                  </span>
+                  {candidate.location && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" /> {candidate.location}
+                    </span>
+                  )}
+                  {candidate.email && (
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="h-4 w-4" /> {candidate.email}
+                    </span>
+                  )}
+                  {candidate.phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="h-4 w-4" /> {candidate.phone}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
