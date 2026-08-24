@@ -140,15 +140,21 @@ function ProfilePage() {
                 </h1>
                 <p className="mt-1 text-lg text-muted-foreground">{candidate.headline}</p>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4" /> {candidate.location}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="h-4 w-4" /> {candidate.email}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="h-4 w-4" /> {candidate.phone}
-                  </span>
+                  {candidate.location && (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" /> {candidate.location}
+                    </span>
+                  )}
+                  {candidate.email && (
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="h-4 w-4" /> {candidate.email}
+                    </span>
+                  )}
+                  {candidate.phone && (
+                    <span className="flex items-center gap-1.5">
+                      <Phone className="h-4 w-4" /> {candidate.phone}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
