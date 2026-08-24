@@ -32,94 +32,6 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
-// --- Mock candidate data (would come from the resume-parsing API) ---
-const candidate = {
-  name: "Alex Morgan",
-  headline: "Senior Frontend Engineer",
-  location: "Berlin, Germany",
-  email: "alex.morgan@example.com",
-  phone: "+49 30 1234 5678",
-  summary:
-    "Product-minded frontend engineer with 7+ years building performant web apps in React, TypeScript and modern tooling. Passionate about design systems, DX, and shipping quickly.",
-  completion: {
-    score: 82,
-    sections: [
-      { label: "Contact info", done: true },
-      { label: "Work experience", done: true },
-      { label: "Education", done: true },
-      { label: "Skills", done: true },
-      { label: "Portfolio links", done: false },
-      { label: "Certifications", done: false },
-    ],
-  },
-  skills: [
-    { name: "React", level: "Expert" },
-    { name: "TypeScript", level: "Expert" },
-    { name: "Next.js", level: "Advanced" },
-    { name: "Tailwind CSS", level: "Advanced" },
-    { name: "Node.js", level: "Intermediate" },
-    { name: "GraphQL", level: "Intermediate" },
-    { name: "Design Systems", level: "Advanced" },
-    { name: "Testing (Vitest, Playwright)", level: "Advanced" },
-    { name: "AWS", level: "Intermediate" },
-    { name: "Figma", level: "Intermediate" },
-  ],
-  experience: [
-    {
-      role: "Senior Frontend Engineer",
-      company: "Northwind Labs",
-      location: "Berlin, Germany",
-      period: "2022 — Present",
-      bullets: [
-        "Led migration from CRA to Next.js App Router, cutting TTI by 43%.",
-        "Built internal design system used by 6 product teams.",
-        "Mentored 4 mid-level engineers; ran hiring loops.",
-      ],
-    },
-    {
-      role: "Frontend Engineer",
-      company: "Cobalt Health",
-      location: "Remote",
-      period: "2019 — 2022",
-      bullets: [
-        "Owned patient-facing dashboard used by 120k monthly users.",
-        "Introduced Playwright end-to-end tests, reducing regressions by 60%.",
-      ],
-    },
-    {
-      role: "Junior Web Developer",
-      company: "Studio Kite",
-      location: "London, UK",
-      period: "2017 — 2019",
-      bullets: [
-        "Delivered 20+ client marketing sites on tight timelines.",
-        "Introduced component library, cutting new-site setup from days to hours.",
-      ],
-    },
-  ],
-  education: [
-    {
-      degree: "B.Sc. Computer Science",
-      school: "University of Manchester",
-      period: "2013 — 2017",
-      detail: "First-class honours. Focus on HCI and distributed systems.",
-    },
-    {
-      degree: "Frontend Masters — Advanced React",
-      school: "Frontend Masters",
-      period: "2021",
-      detail: "Certificate of completion.",
-    },
-  ],
-  recommendedRoles: [
-    { title: "Staff Frontend Engineer", match: 94 },
-    { title: "Frontend Tech Lead", match: 91 },
-    { title: "Senior Full-Stack Engineer", match: 84 },
-    { title: "Design Systems Engineer", match: 82 },
-    { title: "Web Platform Engineer", match: 78 },
-  ],
-};
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -129,9 +41,58 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+const EMPTY_PROFILE: CandidateProfile = {
+  name: "Candidate",
+  headline: "Professional",
+  location: "",
+  email: "",
+  phone: "",
+  summary: "",
+  completion: { score: 0, sections: [] },
+  skills: [],
+  experience: [],
+  education: [],
+  recommendedRoles: [],
+};
+
 function ProfilePage() {
+  const [candidate, setCandidate] = useState<CandidateProfile>(EMPTY_PROFILE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const candidateId = getCandidateId();
+    if (!candidateId) {
+      setLoading(false);
+      setError(
+        "No candidate profile found yet. Upload your CV to generate your profile.",
+      );
+      return;
+    }
+    fetchCandidateProfile(candidateId)
+      .then((data) => {
+        if (!active) return;
+        setCandidate(data);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(
+          err instanceof ApiError ? err.message : "Could not load your profile. Please try again.",
+        );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const { completion } = candidate;
   const done = completion.sections.filter((s) => s.done).length;
+
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
