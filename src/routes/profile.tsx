@@ -24,7 +24,7 @@ import { Footer } from "@/components/Footer";
 import { ApiError } from "@/lib/api";
 import {
   fetchCandidateProfile,
-  getCandidateId,
+  resolveCandidateId,
   type CandidateProfile,
 } from "@/lib/candidate-profile";
 
@@ -73,29 +73,32 @@ function ProfilePage() {
 
   useEffect(() => {
     let active = true;
-    const candidateId = getCandidateId();
-    if (!candidateId) {
-      setLoading(false);
-      setError(
-        "No candidate profile found yet. Upload your CV to generate your profile.",
-      );
-      return;
-    }
-    fetchCandidateProfile(candidateId)
-      .then((data) => {
+    (async () => {
+      const candidateId = await resolveCandidateId();
+      if (!active) return;
+      if (!candidateId) {
+        setLoading(false);
+        setError(
+          "No candidate profile found yet. Sign in and upload your CV to generate your profile.",
+        );
+        return;
+      }
+      try {
+        const data = await fetchCandidateProfile(candidateId);
         if (!active) return;
         setCandidate(data);
         setError(null);
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (!active) return;
         setError(
-          err instanceof ApiError ? err.message : "Could not load your profile. Please try again.",
+          err instanceof ApiError
+            ? err.message
+            : "Could not load your profile. Please try again.",
         );
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    })();
     return () => {
       active = false;
     };

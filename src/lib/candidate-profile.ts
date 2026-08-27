@@ -4,6 +4,7 @@
  * with safe fallbacks so every section keeps rendering when fields are missing.
  */
 import { apiRequest, ApiError, getStoredToken } from "./api";
+import { fetchCurrentUser } from "./auth";
 import { getStoredResumeResult } from "./resume";
 
 export type CandidateProfile = {
@@ -54,14 +55,37 @@ function arr(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-/** Reads the candidate id the app already stores (resume upload response or auth payload). */
+/**
+ * Reads the candidate id the app already stores after resume upload.
+ *
+ * Backend GET /api/v1/resume/profile/{candidate_id} looks up by user UUID
+ * (see ResumeService.get_candidate_profile). Upload returns ParsedResumeRead
+ * with `user_id` as that identifier — never use the upload/resume row `id`.
+ */
 export function getCandidateId(): string | null {
   const result = getStoredResumeResult<Raw>();
   const candidate =
-    pick(result, "candidate_id", "candidateId") ??
-    pick(obj(result?.["candidate"]), "id", "candidate_id") ??
-    pick(result, "id", "resume_id", "parsed_resume_id");
+    pick(result, "user_id", "candidate_id", "candidateId") ??
+    pick(obj(result?.["candidate"]), "user_id", "candidate_id");
   return candidate === undefined ? null : String(candidate);
+}
+
+/**
+ * Resolve the user UUID for profile APIs: sessionStorage upload result first,
+ * then GET /api/v1/auth/me when signed in (so Profile works after login alone).
+ */
+export async function resolveCandidateId(): Promise<string | null> {
+  const fromStorage = getCandidateId();
+  if (fromStorage) return fromStorage;
+
+  if (!getStoredToken()) return null;
+
+  try {
+    const user = await fetchCurrentUser();
+    return user?.id ? String(user.id) : null;
+  } catch {
+    return null;
+  }
 }
 
 function mapSkills(value: unknown): { name: string; level: string }[] {
@@ -131,12 +155,24 @@ function mapRoles(value: unknown): { title: string; match: number }[] {
     .filter((r): r is { title: string; match: number } => Boolean(r));
 }
 
-/** Backends often nest the profile under `profile`, `data`, `parsed_data` or `result`. */
+/**
+ * Jobyn profile GET returns CandidateProfileRead with CV fields under `content`.
+ * Upload returns ParsedResumeRead with the same fields under `parsed_data`.
+ * Merge nested blobs so the view-model mapper can read flat field names.
+ */
 function unwrap(raw: unknown): Raw | null {
   const root = obj(raw);
   if (!root) return null;
   let merged: Raw = { ...root };
-  for (const key of ["parsed_data", "profile", "candidate", "data", "result", "analysis"]) {
+  for (const key of [
+    "content",
+    "parsed_data",
+    "profile",
+    "candidate",
+    "data",
+    "result",
+    "analysis",
+  ]) {
     const nested = obj(root[key]);
     if (nested) merged = { ...nested, ...merged, ...nested };
   }
@@ -147,40 +183,78 @@ export function mapCandidateProfile(raw: unknown): CandidateProfile {
   const src = unwrap(raw) ?? {};
   const contact = obj(pick(src, "contact", "contact_info")) ?? src;
 
-  const skills = mapSkills(pick(src, "skills", "top_skills", "extracted_skills"));
+  // Prefer technical_skills when present; CV analyzer also returns a flat skills list.
+  const skills = mapSkills(
+    pick(src, "skills", "technical_skills", "top_skills", "extracted_skills"),
+  );
+  const softSkills = mapSkills(pick(src, "soft_skills"));
+  const allSkills = [...skills];
+  for (const s of softSkills) {
+    if (!allSkills.some((x) => x.name.toLowerCase() === s.name.toLowerCase())) {
+      allSkills.push(s.level ? s : { ...s, level: "soft" });
+    }
+  }
+
   const experience = mapExperience(pick(src, "experience", "work_experience", "employment"));
   const education = mapEducation(pick(src, "education", "education_history"));
   const recommendedRoles = mapRoles(
     pick(src, "recommended_roles", "recommended_job_titles", "roles"),
   );
 
+  const years = str(pick(src, "years_experience", "years_of_experience"));
+  const industries = arr(pick(src, "industries"))
+    .map((i) => (typeof i === "string" ? i : str(pick(obj(i), "name", "title"))))
+    .filter(Boolean);
+  const strengths = arr(pick(src, "strengths"))
+    .map((s) => (typeof s === "string" ? s : str(pick(obj(s), "title", "name", "strength"))))
+    .filter(Boolean);
+
+  // Resume record `title` is often the candidate name / filename — prefer career_level for headline.
+  const headline = str(
+    pick(src, "headline", "current_role", "career_level"),
+    years ? `Professional · ${years}` : "Professional",
+  );
+
+  const summaryParts = [
+    str(pick(src, "summary", "professional_summary", "ai_summary", "about")),
+    years ? `Experience: ${years}.` : "",
+    industries.length ? `Industries: ${industries.join(", ")}.` : "",
+    strengths.length ? `Strengths: ${strengths.join(", ")}.` : "",
+  ].filter(Boolean);
+
   const sections = [
     { label: "Contact info", done: Boolean(pick(contact, "email", "phone")) },
     { label: "Work experience", done: experience.length > 0 },
     { label: "Education", done: education.length > 0 },
-    { label: "Skills", done: skills.length > 0 },
+    { label: "Skills", done: allSkills.length > 0 },
     {
       label: "Portfolio links",
       done: Boolean(pick(src, "portfolio", "links", "website", "github")),
     },
-    { label: "Certifications", done: arr(pick(src, "certifications")).length > 0 },
+    {
+      label: "Certifications",
+      done: arr(pick(src, "certifications", "certification_recommendations")).length > 0,
+    },
   ];
 
   const reported = pick(src, "profile_completion", "completeness", "completion_score", "completion");
+  const derivedScore = Math.round(
+    (sections.filter((s) => s.done).length / Math.max(sections.length, 1)) * 100,
+  );
   const score =
     reported === undefined
-      ? 0
+      ? derivedScore
       : num(typeof reported === "object" ? pick(obj(reported), "score", "value") : reported);
 
   return {
     name: str(pick(src, "full_name", "name", "candidate_name"), "Candidate"),
-    headline: str(pick(src, "headline", "current_role", "title", "career_level"), "Professional"),
+    headline,
     location: str(pick(contact, "location", "city", "address")),
     email: str(pick(contact, "email")),
     phone: str(pick(contact, "phone", "phone_number", "mobile")),
-    summary: str(pick(src, "summary", "professional_summary", "ai_summary", "about")),
+    summary: summaryParts.join(" "),
     completion: { score, sections },
-    skills,
+    skills: allSkills,
     experience,
     education,
     recommendedRoles,

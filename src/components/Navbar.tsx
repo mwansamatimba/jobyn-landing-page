@@ -11,6 +11,7 @@ const navLinks = [
   { label: "Career Coach", to: "/coach" },
   { label: "Matches", to: "/matches" },
   { label: "Cover Letter", to: "/cover-letter" },
+  { label: "Applications", to: "/applications" },
 ];
 
 export function Navbar() {

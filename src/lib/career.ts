@@ -150,8 +150,12 @@ function mapRoadmap(value: unknown): RoadmapStep[] {
     .map((step) => {
       const o = obj(step);
       if (!o) return null;
-      const stage = str(pick(o, "stage", "timeline", "phase", "period"), "Next step");
-      const role = str(pick(o, "role", "title", "position", "target_role"), "");
+      const stage = str(pick(o, "stage", "phase", "period"), "Next step");
+      // Career navigator returns stage/timeline/actions (no role title).
+      const role = str(
+        pick(o, "role", "title", "position", "target_role", "timeline"),
+        stage,
+      );
       const actions = arr(pick(o, "actions", "steps", "tasks", "milestones"))
         .map((a) => (typeof a === "string" ? a : str(pick(obj(a), "action", "text", "description", "step"))))
         .filter(Boolean);
@@ -260,19 +264,54 @@ export function mapCareerCoach(raw: unknown): CareerCoachData {
   const src = unwrap(raw) ?? {};
 
   const strengths = mapStrengths(pick(src, "strengths", "strength_areas", "professional_strengths"));
-  const skillGaps = mapSkillGaps(pick(src, "skill_gaps", "skill_gaps_analysis", "missing_skills", "skills_to_develop"));
-  const roadmap = mapRoadmap(pick(src, "roadmap", "career_path", "career_roadmap", "career_pathway", "stages"));
-  const actionPlan = mapActionPlan(
-    pick(src, "action_plan", "action_items", "job_search_strategy", "preparation_plan", "next_steps"),
+  // Career navigator returns skill_priorities (strings), not skill_gaps objects.
+  const skillGaps = mapSkillGaps(
+    pick(
+      src,
+      "skill_gaps",
+      "skill_priorities",
+      "skill_gaps_analysis",
+      "missing_skills",
+      "skills_to_develop",
+    ),
   );
+  const roadmap = mapRoadmap(
+    pick(src, "roadmap", "career_path", "career_roadmap", "career_pathway", "stages"),
+  );
+  const actionPlan = mapActionPlan(
+    pick(
+      src,
+      "action_plan",
+      "action_items",
+      "job_search_strategy",
+      "preparation_plan",
+      "next_steps",
+    ),
+  );
+  // No dedicated interview list in career/latest — certifications are useful prep prompts.
   const interviewTopics = mapInterviewTopics(
-    pick(src, "interview_topics", "interview_questions", "interview_prep", "preparation_topics"),
+    pick(
+      src,
+      "interview_topics",
+      "interview_questions",
+      "interview_prep",
+      "preparation_topics",
+      "certification_recommendations",
+    ),
   );
   const recommendations = mapRecommendations(
-    pick(src, "recommendations", "recommended_roles", "recommended_paths", "recommended_career_paths"),
+    pick(
+      src,
+      "recommendations",
+      "recommended_roles",
+      "recommended_paths",
+      "recommended_career_paths",
+    ),
   );
 
-  const currentSkills = arr(pick(src, "current_skills", "skills", "technical_skills", "core_skills"))
+  const currentSkills = arr(
+    pick(src, "current_skills", "skills", "technical_skills", "core_skills"),
+  )
     .map((s) => (typeof s === "string" ? s : str(pick(obj(s), "name", "skill", "title"))))
     .filter(Boolean);
 
@@ -282,14 +321,43 @@ export function mapCareerCoach(raw: unknown): CareerCoachData {
 
   const reasoningRaw = pick(src, "reasoning", "explainable_ai", "ai_reasoning");
 
+  // Derive light explainability from real analysis fields when nested reasoning is absent.
+  let reasoning = mapReasoning(reasoningRaw);
+  if (
+    !reasoning.evidence.length &&
+    !reasoning.reasoning.length &&
+    !reasoning.explanations.length
+  ) {
+    const advice = str(pick(src, "career_advice", "summary", "ai_summary"));
+    const direction = str(pick(src, "career_direction", "career_level"));
+    reasoning = {
+      evidence: direction
+        ? [
+            {
+              icon: "briefcase",
+              label: "Career direction",
+              value: direction,
+              detail: advice || "From your latest career analysis.",
+            },
+          ]
+        : [],
+      reasoning: advice ? [advice] : direction ? [`Direction: ${direction}`] : [],
+      explanations: recommendations.slice(0, 3).map((r) => ({
+        role: r.role,
+        why: r.why || advice || "Recommended from your latest career analysis.",
+        badges: r.required.slice(0, 4),
+      })),
+    };
+  }
+
   return {
     career_level: str(
-      pick(src, "career_level", "career_direction", "current_level", "seniority"),
+      pick(src, "career_level", "career_direction", "current_level", "seniority", "target_role"),
       "Professional",
     ),
     readiness_score: num(readiness),
     summary: str(
-      pick(src, "summary", "ai_summary", "career_advice", "final_advice", "overview"),
+      pick(src, "summary", "ai_summary", "career_advice", "final_advice", "overview", "career_direction"),
       "",
     ),
     strengths,
@@ -299,20 +367,45 @@ export function mapCareerCoach(raw: unknown): CareerCoachData {
     action_plan: actionPlan,
     interview_topics: interviewTopics,
     recommendations,
-    reasoning: mapReasoning(reasoningRaw),
+    reasoning,
   };
 }
 
-/** GET /api/v1/career/latest */
+/** POST /api/v1/career/analyze — creates the insight that GET /latest returns. */
+async function analyzeCareer(token: string): Promise<void> {
+  await apiRequest<unknown>("/api/v1/career/analyze", {
+    method: "POST",
+    auth: true,
+    headers: { Authorization: `Bearer ${token}` },
+    body: {},
+  });
+}
+
+/** GET /api/v1/career/latest — runs analyze once when no insight exists yet. */
 export async function fetchLatestCareerCoach(): Promise<CareerCoachData> {
   const token = getStoredToken();
   if (!token) {
     throw new ApiError("Please sign in to view your career coach.", 401);
   }
-  const data = await apiRequest<unknown>("/api/v1/career/latest", {
-    method: "GET",
-    auth: true,
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  return mapCareerCoach(data);
+
+  const authHeaders = { Authorization: `Bearer ${token}` };
+
+  try {
+    const data = await apiRequest<unknown>("/api/v1/career/latest", {
+      method: "GET",
+      auth: true,
+      headers: authHeaders,
+    });
+    return mapCareerCoach(data);
+  } catch (err) {
+    // Backend returns 404 until POST /career/analyze has been run for this user.
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
+    await analyzeCareer(token);
+    const data = await apiRequest<unknown>("/api/v1/career/latest", {
+      method: "GET",
+      auth: true,
+      headers: authHeaders,
+    });
+    return mapCareerCoach(data);
+  }
 }
