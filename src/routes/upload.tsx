@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, FileText, AlertCircle, X, Loader2, Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,13 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { isAuthenticated } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { isProcessing, storeResumeResult, uploadResume, type ResumeUploadResponse } from "@/lib/resume";
-
+import {
+  isProcessing,
+  isResumeParseComplete,
+  storeResumeResult,
+  uploadResume,
+  type ResumeUploadResponse,
+} from "@/lib/resume";
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
@@ -99,13 +104,23 @@ function UploadPage() {
     setError(null);
     setAuthError(false);
     setResult(null);
+    setStepIndex(0);
 
     try {
       const data = await uploadResume(file, setProgress);
       storeResumeResult(data);
       setResult(data);
-      setStatus("processing");
-      setStepIndex(1);
+
+      if (isResumeParseComplete(data)) {
+        // The backend has finished parsing. Complete every visual stage
+        // immediately; do not run a synthetic progress timer after success.
+        setProgress(100);
+        setStepIndex(PROCESSING_STEPS.length);
+        setStatus("done");
+      } else {
+        setStatus("processing");
+        setStepIndex(1);
+      }
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : null;
       setAuthError(apiErr?.status === 401);
@@ -114,19 +129,6 @@ function UploadPage() {
       setStatus("error");
     }
   }, [file]);
-
-  // Advance the AI pipeline steps once the backend has accepted the file,
-  // then hand off to the snapshot page.
-  useEffect(() => {
-    if (status !== "processing") return;
-    if (stepIndex >= PROCESSING_STEPS.length) {
-      setStatus("done");
-      const t = setTimeout(() => navigate({ to: "/snapshot" }), 600);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => setStepIndex((i) => i + 1), 700);
-    return () => clearTimeout(t);
-  }, [status, stepIndex, navigate]);
 
   const reset = () => {
     setFile(null);
@@ -141,7 +143,6 @@ function UploadPage() {
 
   const showProcessing = status === "processing" || status === "done";
   const backendProcessing = isProcessing(result);
-
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -165,25 +166,26 @@ function UploadPage() {
             <Card className="overflow-hidden border-primary/20 p-8 shadow-lg">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Sparkles className="h-5 w-5 animate-pulse" />
+                  <Sparkles className={`h-5 w-5 ${status === "processing" ? "animate-pulse" : ""}`} />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">
-                    Building your Career Snapshot
+                    {status === "done" ? "Your Career Snapshot is ready" : "Building your Career Snapshot"}
                   </h2>
                   <p className="text-sm text-muted-foreground">
-                    {backendProcessing
-                      ? `Your resume is queued for AI parsing — ${file?.name}`
-                      : `Our AI is analyzing ${file?.name ?? "your resume"} in real time.`}
+                    {status === "done"
+                      ? "Your CV has been parsed. Candidate intelligence is ready."
+                      : backendProcessing
+                        ? `Your resume is queued for AI parsing — ${file?.name}`
+                        : `Our AI is analyzing ${file?.name ?? "your resume"} in real time.`}
                   </p>
-
                 </div>
               </div>
 
               <ul className="mt-8 space-y-3">
                 {PROCESSING_STEPS.map((step, i) => {
-                  const done = i < stepIndex;
-                  const active = i === stepIndex;
+                  const done = i < stepIndex || status === "done";
+                  const active = status === "processing" && i === stepIndex;
                   return (
                     <li
                       key={step}
@@ -224,9 +226,20 @@ function UploadPage() {
                 })}
               </ul>
 
-              <p className="mt-6 text-center text-xs text-muted-foreground">
-                Redirecting to your snapshot when analysis completes…
-              </p>
+              {status === "done" ? (
+                <div className="mt-6 flex flex-col items-center gap-3 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Your candidate intelligence and recommendations are ready to explore.
+                  </p>
+                  <Button onClick={() => navigate({ to: "/snapshot" })}>
+                    View candidate intelligence
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-6 text-center text-xs text-muted-foreground">
+                  Waiting for the backend to finish analysis…
+                </p>
+              )}
             </Card>
           ) : (
             <Card className="p-6 sm:p-8">
@@ -333,8 +346,6 @@ function UploadPage() {
                   .
                 </div>
               )}
-
-
 
               <div className="mt-6 flex justify-end">
                 <Button
