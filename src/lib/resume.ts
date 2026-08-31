@@ -2,8 +2,10 @@
 import { API_BASE_URL, ApiError, getStoredToken, clearStoredToken, parseApiErrorMessage } from "./api";
 
 export type ResumeUploadResponse = {
-  /** Backends commonly return a status such as "processing" | "completed". */
+  /** Legacy/general status, when supplied by the backend. */
   status?: string;
+  /** Authoritative resume parsing status returned by the backend. */
+  parse_status?: string;
   [key: string]: unknown;
 };
 
@@ -29,10 +31,18 @@ export function getStoredResumeResult<T = ResumeUploadResponse>(): T | null {
   }
 }
 
+function resumeStatus(result: ResumeUploadResponse | null): string {
+  return String(result?.parse_status ?? result?.status ?? "").toLowerCase();
+}
+
+/** True when the backend signals parsing is complete. */
+export function isResumeParseComplete(result: ResumeUploadResponse | null): boolean {
+  return ["succeeded", "completed", "complete", "success"].includes(resumeStatus(result));
+}
+
 /** True when the backend signals parsing is still in progress. */
 export function isProcessing(result: ResumeUploadResponse | null): boolean {
-  const status = String(result?.status ?? "").toLowerCase();
-  return status === "processing" || status === "pending" || status === "queued";
+  return ["processing", "pending", "queued"].includes(resumeStatus(result));
 }
 
 /**
