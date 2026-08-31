@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { isAuthenticated } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import {
+  getStoredResumeResult,
   isProcessing,
   isResumeParseComplete,
   storeResumeResult,
@@ -72,6 +73,16 @@ function UploadPage() {
 
   useEffect(() => {
     setSignedIn(isAuthenticated());
+
+    // Reconstruct a completed state after a reload when the last backend
+    // response already confirmed successful parsing.
+    const storedResult = getStoredResumeResult();
+    if (isResumeParseComplete(storedResult)) {
+      setResult(storedResult);
+      setProgress(100);
+      setStepIndex(PROCESSING_STEPS.length);
+      setStatus("done");
+    }
   }, []);
 
   const handleFile = useCallback((selected: File) => {
@@ -112,8 +123,6 @@ function UploadPage() {
       setResult(data);
 
       if (isResumeParseComplete(data)) {
-        // The backend has finished parsing. Complete every visual stage
-        // immediately; do not run a synthetic progress timer after success.
         setProgress(100);
         setStepIndex(PROCESSING_STEPS.length);
         setStatus("done");
