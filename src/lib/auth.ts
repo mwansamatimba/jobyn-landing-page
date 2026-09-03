@@ -1,10 +1,19 @@
-/** Authentication service backed by the FastAPI /api/v1/auth endpoints. */
+/** Authentication service backed by Firebase Auth with Jobyn API provisioning. */
 import {
-  apiRequest,
-  clearStoredToken,
-  getStoredToken,
-  setStoredToken,
-} from "./api";
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  type User,
+} from "firebase/auth";
+
+import { ApiError, apiRequest, clearStoredToken, getStoredToken } from "./api";
+import {
+  getCurrentFirebaseIdToken,
+  getFirebaseAuth,
+  getFirebaseCurrentUser,
+  waitForFirebaseAuthPersistence,
+} from "./firebase";
 
 export type AuthResponse = {
   access_token: string;
@@ -23,31 +32,73 @@ export type LoginInput = {
   password: string;
 };
 
+function firebaseAuthError(error: unknown): ApiError {
+  const code = typeof error === "object" && error && "code" in error
+    ? String((error as { code?: unknown }).code)
+    : "";
+
+  const messages: Record<string, string> = {
+    "auth/email-already-in-use": "An account with this email already exists.",
+    "auth/invalid-credential": "Invalid email or password.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/weak-password": "Choose a stronger password.",
+    "auth/user-disabled": "This account is disabled.",
+  };
+
+  return new ApiError(messages[code] ?? "Authentication failed. Please try again.", 401, error);
+}
+
+async function authResponse(user: User): Promise<AuthResponse> {
+  const accessToken = await user.getIdToken();
+  if (!accessToken) throw new ApiError("Firebase did not return an ID token.", 401);
+
+  // The first authenticated API call provisions/maps the Firebase identity to
+  // the existing Jobyn user without introducing a database migration.
+  await apiRequest<CurrentUser>("/api/v1/auth/me", { method: "GET", auth: true });
+
+  return {
+    access_token: accessToken,
+    token_type: "bearer",
+  };
+}
+
 export async function register(input: RegisterInput): Promise<AuthResponse> {
-  const data = await apiRequest<AuthResponse>("/api/v1/auth/register", {
-    method: "POST",
-    auth: false,
-    body: {
-      email: input.email,
-      password: input.password,
-      full_name: input.full_name,
-    },
-  });
-  if (data?.access_token) setStoredToken(data.access_token);
-  return data;
+  try {
+    const auth = await waitForFirebaseAuthPersistence();
+    const credential = await createUserWithEmailAndPassword(
+      auth,
+      input.email.trim().toLowerCase(),
+      input.password,
+    );
+
+    if (input.full_name.trim()) {
+      await updateProfile(credential.user, { displayName: input.full_name.trim() });
+    }
+
+    return authResponse(credential.user);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw firebaseAuthError(error);
+  }
 }
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  const data = await apiRequest<AuthResponse>("/api/v1/auth/login", {
-    method: "POST",
-    auth: false,
-    body: { email: input.email, password: input.password },
-  });
-  if (data?.access_token) setStoredToken(data.access_token);
-  return data;
+  try {
+    const auth = await waitForFirebaseAuthPersistence();
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      input.email.trim().toLowerCase(),
+      input.password,
+    );
+    return authResponse(credential.user);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw firebaseAuthError(error);
+  }
 }
 
 export function logout(): void {
+  void signOut(getFirebaseAuth()).catch(() => undefined);
   clearStoredToken();
   if (typeof window !== "undefined") {
     try {
@@ -59,7 +110,22 @@ export function logout(): void {
 }
 
 export function isAuthenticated(): boolean {
-  return Boolean(getStoredToken());
+  return Boolean(getFirebaseCurrentUser() ?? getStoredToken());
 }
 
-export { getStoredToken };
+/** Public user payload from GET /api/v1/auth/me (UserRead). */
+export type CurrentUser = {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  is_active?: boolean;
+  is_verified?: boolean;
+  created_at?: string;
+};
+
+/** GET /api/v1/auth/me — uses the current Firebase ID token when available. */
+export async function fetchCurrentUser(): Promise<CurrentUser> {
+  return apiRequest<CurrentUser>("/api/v1/auth/me", { method: "GET", auth: true });
+}
+
+export { getCurrentFirebaseIdToken as getFirebaseIdToken, getStoredToken };
