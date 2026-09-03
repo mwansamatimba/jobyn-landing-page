@@ -5,6 +5,8 @@
  * Falls back to the local FastAPI dev server.
  */
 
+import { getCurrentFirebaseIdToken, getFirebaseCurrentUser } from "./firebase";
+
 export const API_BASE_URL: string =
   (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/$/, "") ??
   "http://127.0.0.1:8000";
@@ -23,7 +25,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Reads the stored access token (browser only). */
+/** Reads the legacy Jobyn access token (browser only). Firebase tokens are not stored here. */
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -33,6 +35,7 @@ export function getStoredToken(): string | null {
   }
 }
 
+/** Retained for compatibility with existing callers; Firebase auth does not use this storage. */
 export function setStoredToken(token: string): void {
   if (typeof window === "undefined") return;
   try {
@@ -84,14 +87,14 @@ type RequestOptions = {
   /** JSON body — ignored when `formData` is provided. */
   body?: unknown;
   formData?: FormData;
-  /** Attach the stored Bearer token (default: true). */
+  /** Attach the current Firebase ID token, or a legacy stored Jobyn token when no Firebase session exists. */
   auth?: boolean;
   headers?: Record<string, string>;
   signal?: AbortSignal;
 };
 
 /**
- * Core request helper: builds the URL, attaches the Bearer token,
+ * Core request helper: builds the URL, attaches the current Firebase ID token,
  * parses JSON, and raises ApiError for non-2xx responses.
  */
 export async function apiRequest<T = unknown>(
@@ -103,7 +106,8 @@ export async function apiRequest<T = unknown>(
   const finalHeaders: Record<string, string> = { Accept: "application/json", ...headers };
 
   if (auth) {
-    const token = getStoredToken();
+    const firebaseUser = getFirebaseCurrentUser();
+    const token = firebaseUser ? await getCurrentFirebaseIdToken() : getStoredToken();
     if (token) finalHeaders["Authorization"] = `Bearer ${token}`;
   }
 
@@ -142,7 +146,7 @@ export async function apiRequest<T = unknown>(
   }
 
   if (!response.ok) {
-    if (response.status === 401) clearStoredToken();
+    if (response.status === 401 && !getFirebaseCurrentUser()) clearStoredToken();
     throw new ApiError(parseApiErrorMessage(data, response.status), response.status, data);
   }
 
