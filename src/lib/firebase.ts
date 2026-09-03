@@ -2,6 +2,7 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 import {
   browserLocalPersistence,
   getAuth,
+  onAuthStateChanged,
   setPersistence,
   type Auth,
   type User,
@@ -33,6 +34,7 @@ export function getFirebaseApp() {
 
 let authInstance: Auth | null = null;
 let persistenceReady: Promise<void> | null = null;
+let authStateReady: Promise<User | null> | null = null;
 
 export function getFirebaseAuth(): Auth {
   if (!authInstance) {
@@ -53,8 +55,38 @@ export function getFirebaseCurrentUser(): User | null {
   return getFirebaseAuth().currentUser;
 }
 
+async function waitForFirebaseCurrentUser(): Promise<User | null> {
+  const auth = await waitForFirebaseAuthPersistence();
+  if (auth.currentUser) return auth.currentUser;
+
+  if (!authStateReady) {
+    authStateReady = new Promise<User | null>((resolve) => {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe();
+        resolve(user);
+      });
+    });
+  }
+
+  return authStateReady;
+}
+
 export async function getCurrentFirebaseIdToken(): Promise<string | null> {
-  const user = getFirebaseCurrentUser();
+  if (typeof window === "undefined") return null;
+
+  let user: User | null;
+  try {
+    user = await waitForFirebaseCurrentUser();
+  } catch (error) {
+    // Firebase is optional for legacy/local development until its public
+    // VITE_* configuration is supplied. Authentication itself still fails
+    // clearly through waitForFirebaseAuthPersistence().
+    if (error instanceof Error && error.message.startsWith("Missing Firebase configuration:")) {
+      return null;
+    }
+    throw error;
+  }
+
   if (!user) return null;
   return user.getIdToken();
 }
