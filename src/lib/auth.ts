@@ -12,6 +12,7 @@ import {
   getCurrentFirebaseIdToken,
   getFirebaseAuth,
   getFirebaseCurrentUser,
+  isFirebaseConfigured,
   waitForFirebaseAuthPersistence,
 } from "./firebase";
 
@@ -98,7 +99,13 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
 }
 
 export function logout(): void {
-  void signOut(getFirebaseAuth()).catch(() => undefined);
+  if (isFirebaseConfigured()) {
+    try {
+      void signOut(getFirebaseAuth()).catch(() => undefined);
+    } catch {
+      // Firebase is optional when using the legacy Jobyn token.
+    }
+  }
   clearStoredToken();
   if (typeof window !== "undefined") {
     try {
