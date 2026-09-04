@@ -17,11 +17,18 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
 };
 
-function assertFirebaseConfig(): void {
-  const missing = Object.entries(firebaseConfig)
+function getMissingFirebaseConfig(): string[] {
+  return Object.entries(firebaseConfig)
     .filter(([, value]) => !value)
     .map(([key]) => key);
+}
 
+export function isFirebaseConfigured(): boolean {
+  return getMissingFirebaseConfig().length === 0;
+}
+
+function assertFirebaseConfig(): void {
+  const missing = getMissingFirebaseConfig();
   if (missing.length > 0) {
     throw new Error(`Missing Firebase configuration: ${missing.join(", ")}`);
   }
@@ -51,7 +58,7 @@ export async function waitForFirebaseAuthPersistence(): Promise<Auth> {
 }
 
 export function getFirebaseCurrentUser(): User | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !isFirebaseConfigured()) return null;
   return getFirebaseAuth().currentUser;
 }
 
@@ -72,21 +79,9 @@ async function waitForFirebaseCurrentUser(): Promise<User | null> {
 }
 
 export async function getCurrentFirebaseIdToken(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !isFirebaseConfigured()) return null;
 
-  let user: User | null;
-  try {
-    user = await waitForFirebaseCurrentUser();
-  } catch (error) {
-    // Firebase is optional for legacy/local development until its public
-    // VITE_* configuration is supplied. Authentication itself still fails
-    // clearly through waitForFirebaseAuthPersistence().
-    if (error instanceof Error && error.message.startsWith("Missing Firebase configuration:")) {
-      return null;
-    }
-    throw error;
-  }
-
+  const user = await waitForFirebaseCurrentUser();
   if (!user) return null;
   return user.getIdToken();
 }
