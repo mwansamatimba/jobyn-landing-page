@@ -56,8 +56,8 @@ async function authResponse(user: User): Promise<AuthResponse> {
   const accessToken = await user.getIdToken();
   if (!accessToken) throw new ApiError("Firebase did not return an ID token.", 401);
 
-  // The first authenticated API call provisions/maps the Firebase identity to
-  // the existing Jobyn user without introducing a database migration.
+  // The API accepts this identity only when it is already bound to a Jobyn
+  // account; Firebase authentication does not create or link accounts.
   await apiRequest<CurrentUser>("/api/v1/auth/me", { method: "GET", auth: true });
 
   return {
@@ -136,6 +136,7 @@ export type CurrentUser = {
   full_name?: string | null;
   is_active?: boolean;
   is_verified?: boolean;
+  role?: string;
   created_at?: string;
 };
 

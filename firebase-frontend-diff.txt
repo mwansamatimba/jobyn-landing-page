@@ -1,0 +1,325 @@
+diff --git a/package.json b/package.json
+index 9b94c4a..d14a8a0 100644
+--- a/package.json
++++ b/package.json
+@@ -49,6 +49,7 @@
+     "cmdk": "^1.1.1",
+     "date-fns": "^4.1.0",
+     "embla-carousel-react": "^8.6.0",
++    "firebase": "^12.18.0",
+     "input-otp": "^1.4.2",
+     "lucide-react": "^0.575.0",
+     "react": "^19.2.0",
+diff --git a/src/lib/api.ts b/src/lib/api.ts
+index 0d78003..5ac0e00 100644
+--- a/src/lib/api.ts
++++ b/src/lib/api.ts
+@@ -5,6 +5,8 @@
+  * Falls back to the local FastAPI dev server.
+  */
+ 
++import { getCurrentFirebaseIdToken, getFirebaseCurrentUser } from "./firebase";
++
+ export const API_BASE_URL: string =
+   (import.meta.env["VITE_API_BASE_URL"] as string | undefined)?.replace(/\/$/, "") ??
+   "http://127.0.0.1:8000";
+@@ -23,7 +25,7 @@ export class ApiError extends Error {
+   }
+ }
+ 
+-/** Reads the stored access token (browser only). */
++/** Reads the legacy Jobyn access token (browser only). Firebase tokens are not stored here. */
+ export function getStoredToken(): string | null {
+   if (typeof window === "undefined") return null;
+   try {
+@@ -33,6 +35,7 @@ export function getStoredToken(): string | null {
+   }
+ }
+ 
++/** Retained for compatibility with existing callers; Firebase auth does not use this storage. */
+ export function setStoredToken(token: string): void {
+   if (typeof window === "undefined") return;
+   try {
+@@ -84,14 +87,14 @@ type RequestOptions = {
+   /** JSON body — ignored when `formData` is provided. */
+   body?: unknown;
+   formData?: FormData;
+-  /** Attach the stored Bearer token (default: true). */
++  /** Attach the current Firebase ID token, or a legacy stored Jobyn token when no Firebase session exists. */
+   auth?: boolean;
+   headers?: Record<string, string>;
+   signal?: AbortSignal;
+ };
+ 
+ /**
+- * Core request helper: builds the URL, attaches the Bearer token,
++ * Core request helper: builds the URL, attaches the current Firebase ID token,
+  * parses JSON, and raises ApiError for non-2xx responses.
+  */
+ export async function apiRequest<T = unknown>(
+@@ -103,7 +106,8 @@ export async function apiRequest<T = unknown>(
+   const finalHeaders: Record<string, string> = { Accept: "application/json", ...headers };
+ 
+   if (auth) {
+-    const token = getStoredToken();
++    const firebaseUser = getFirebaseCurrentUser();
++    const token = firebaseUser ? await getCurrentFirebaseIdToken() : getStoredToken();
+     if (token) finalHeaders["Authorization"] = `Bearer ${token}`;
+   }
+ 
+@@ -142,7 +146,7 @@ export async function apiRequest<T = unknown>(
+   }
+ 
+   if (!response.ok) {
+-    if (response.status === 401) clearStoredToken();
++    if (response.status === 401 && !getFirebaseCurrentUser()) clearStoredToken();
+     throw new ApiError(parseApiErrorMessage(data, response.status), response.status, data);
+   }
+ 
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+index b78cb05..3e142f5 100644
+--- a/src/lib/auth.ts
++++ b/src/lib/auth.ts
+@@ -1,10 +1,19 @@
+-/** Authentication service backed by the FastAPI /api/v1/auth endpoints. */
++/** Authentication service backed by Firebase Auth with Jobyn API provisioning. */
+ import {
+-  apiRequest,
+-  clearStoredToken,
+-  getStoredToken,
+-  setStoredToken,
+-} from "./api";
++  createUserWithEmailAndPassword,
++  signInWithEmailAndPassword,
++  signOut,
++  updateProfile,
++  type User,
++} from "firebase/auth";
++
++import { ApiError, apiRequest, clearStoredToken, getStoredToken } from "./api";
++import {
++  getCurrentFirebaseIdToken,
++  getFirebaseAuth,
++  getFirebaseCurrentUser,
++  waitForFirebaseAuthPersistence,
++} from "./firebase";
+ 
+ export type AuthResponse = {
+   access_token: string;
+@@ -23,37 +32,73 @@ export type LoginInput = {
+   password: string;
+ };
+ 
+-/**
+- * Register then sign in.
+- *
+- * Backend POST /auth/register returns UserRead (no JWT). The access token is
+- * issued only by POST /auth/login — so after a successful register we login
+- * with the same credentials to store the Bearer token.
+- */
++function firebaseAuthError(error: unknown): ApiError {
++  const code = typeof error === "object" && error && "code" in error
++    ? String((error as { code?: unknown }).code)
++    : "";
++
++  const messages: Record<string, string> = {
++    "auth/email-already-in-use": "An account with this email already exists.",
++    "auth/invalid-credential": "Invalid email or password.",
++    "auth/invalid-email": "Please enter a valid email address.",
++    "auth/weak-password": "Choose a stronger password.",
++    "auth/user-disabled": "This account is disabled.",
++  };
++
++  return new ApiError(messages[code] ?? "Authentication failed. Please try again.", 401, error);
++}
++
++async function authResponse(user: User): Promise<AuthResponse> {
++  const accessToken = await user.getIdToken();
++  if (!accessToken) throw new ApiError("Firebase did not return an ID token.", 401);
++
++  // The first authenticated API call provisions/maps the Firebase identity to
++  // the existing Jobyn user without introducing a database migration.
++  await apiRequest<CurrentUser>("/api/v1/auth/me", { method: "GET", auth: true });
++
++  return {
++    access_token: accessToken,
++    token_type: "bearer",
++  };
++}
++
+ export async function register(input: RegisterInput): Promise<AuthResponse> {
+-  await apiRequest("/api/v1/auth/register", {
+-    method: "POST",
+-    auth: false,
+-    body: {
+-      email: input.email,
+-      password: input.password,
+-      full_name: input.full_name,
+-    },
+-  });
+-  return login({ email: input.email, password: input.password });
++  try {
++    const auth = await waitForFirebaseAuthPersistence();
++    const credential = await createUserWithEmailAndPassword(
++      auth,
++      input.email.trim().toLowerCase(),
++      input.password,
++    );
++
++    if (input.full_name.trim()) {
++      await updateProfile(credential.user, { displayName: input.full_name.trim() });
++    }
++
++    return authResponse(credential.user);
++  } catch (error) {
++    if (error instanceof ApiError) throw error;
++    throw firebaseAuthError(error);
++  }
+ }
+ 
+ export async function login(input: LoginInput): Promise<AuthResponse> {
+-  const data = await apiRequest<AuthResponse>("/api/v1/auth/login", {
+-    method: "POST",
+-    auth: false,
+-    body: { email: input.email, password: input.password },
+-  });
+-  if (data?.access_token) setStoredToken(data.access_token);
+-  return data;
++  try {
++    const auth = await waitForFirebaseAuthPersistence();
++    const credential = await signInWithEmailAndPassword(
++      auth,
++      input.email.trim().toLowerCase(),
++      input.password,
++    );
++    return authResponse(credential.user);
++  } catch (error) {
++    if (error instanceof ApiError) throw error;
++    throw firebaseAuthError(error);
++  }
+ }
+ 
+ export function logout(): void {
++  void signOut(getFirebaseAuth()).catch(() => undefined);
+   clearStoredToken();
+   if (typeof window !== "undefined") {
+     try {
+@@ -65,7 +110,7 @@ export function logout(): void {
+ }
+ 
+ export function isAuthenticated(): boolean {
+-  return Boolean(getStoredToken());
++  return Boolean(getFirebaseCurrentUser() ?? getStoredToken());
+ }
+ 
+ /** Public user payload from GET /api/v1/auth/me (UserRead). */
+@@ -78,9 +123,9 @@ export type CurrentUser = {
+   created_at?: string;
+ };
+ 
+-/** GET /api/v1/auth/me — requires a stored Bearer token. */
++/** GET /api/v1/auth/me — uses the current Firebase ID token when available. */
+ export async function fetchCurrentUser(): Promise<CurrentUser> {
+   return apiRequest<CurrentUser>("/api/v1/auth/me", { method: "GET", auth: true });
+ }
+ 
+-export { getStoredToken };
++export { getCurrentFirebaseIdToken as getFirebaseIdToken, getStoredToken };
+diff --git a/src/lib/firebase.ts b/src/lib/firebase.ts
+new file mode 100644
+index 0000000..6dd72a9
+--- /dev/null
++++ b/src/lib/firebase.ts
+@@ -0,0 +1,92 @@
++import { getApp, getApps, initializeApp } from "firebase/app";
++import {
++  browserLocalPersistence,
++  getAuth,
++  onAuthStateChanged,
++  setPersistence,
++  type Auth,
++  type User,
++} from "firebase/auth";
++
++const firebaseConfig = {
++  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
++  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
++  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
++  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
++  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
++  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
++};
++
++function assertFirebaseConfig(): void {
++  const missing = Object.entries(firebaseConfig)
++    .filter(([, value]) => !value)
++    .map(([key]) => key);
++
++  if (missing.length > 0) {
++    throw new Error(`Missing Firebase configuration: ${missing.join(", ")}`);
++  }
++}
++
++export function getFirebaseApp() {
++  assertFirebaseConfig();
++  return getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
++}
++
++let authInstance: Auth | null = null;
++let persistenceReady: Promise<void> | null = null;
++let authStateReady: Promise<User | null> | null = null;
++
++export function getFirebaseAuth(): Auth {
++  if (!authInstance) {
++    authInstance = getAuth(getFirebaseApp());
++    persistenceReady = setPersistence(authInstance, browserLocalPersistence);
++  }
++  return authInstance;
++}
++
++export async function waitForFirebaseAuthPersistence(): Promise<Auth> {
++  const auth = getFirebaseAuth();
++  if (persistenceReady) await persistenceReady;
++  return auth;
++}
++
++export function getFirebaseCurrentUser(): User | null {
++  if (typeof window === "undefined") return null;
++  return getFirebaseAuth().currentUser;
++}
++
++async function waitForFirebaseCurrentUser(): Promise<User | null> {
++  const auth = await waitForFirebaseAuthPersistence();
++  if (auth.currentUser) return auth.currentUser;
++
++  if (!authStateReady) {
++    authStateReady = new Promise<User | null>((resolve) => {
++      const unsubscribe = onAuthStateChanged(auth, (user) => {
++        unsubscribe();
++        resolve(user);
++      });
++    });
++  }
++
++  return authStateReady;
++}
++
++export async function getCurrentFirebaseIdToken(): Promise<string | null> {
++  if (typeof window === "undefined") return null;
++
++  let user: User | null;
++  try {
++    user = await waitForFirebaseCurrentUser();
++  } catch (error) {
++    // Firebase is optional for legacy/local development until its public
++    // VITE_* configuration is supplied. Authentication itself still fails
++    // clearly through waitForFirebaseAuthPersistence().
++    if (error instanceof Error && error.message.startsWith("Missing Firebase configuration:")) {
++      return null;
++    }
++    throw error;
++  }
++
++  if (!user) return null;
++  return user.getIdToken();
++}
