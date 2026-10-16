@@ -58,7 +58,8 @@ export function clearStoredToken(): void {
 export function parseApiErrorMessage(payload: unknown, status: number): string {
   if (typeof payload === "string" && payload.trim()) return payload;
   if (payload && typeof payload === "object") {
-    const detail = (payload as { detail?: unknown; message?: unknown }).detail ??
+    const detail =
+      (payload as { detail?: unknown; message?: unknown }).detail ??
       (payload as { message?: unknown }).message;
     if (typeof detail === "string" && detail.trim()) return detail;
     if (Array.isArray(detail)) {

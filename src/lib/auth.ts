@@ -1,10 +1,12 @@
 /** Authentication service backed by Firebase Auth with Jobyn API provisioning. */
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
   type User,
+  type UserCredential,
 } from "firebase/auth";
 
 import { ApiError, apiRequest, clearStoredToken, getStoredToken } from "./api";
@@ -34,9 +36,10 @@ export type LoginInput = {
 };
 
 function firebaseAuthError(error: unknown): ApiError {
-  const code = typeof error === "object" && error && "code" in error
-    ? String((error as { code?: unknown }).code)
-    : "";
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
 
   const messages: Record<string, string> = {
     "auth/email-already-in-use": "An account with this email already exists.",
@@ -64,9 +67,10 @@ async function authResponse(user: User): Promise<AuthResponse> {
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
+  let credential: UserCredential | null = null;
   try {
     const auth = await waitForFirebaseAuthPersistence();
-    const credential = await createUserWithEmailAndPassword(
+    credential = await createUserWithEmailAndPassword(
       auth,
       input.email.trim().toLowerCase(),
       input.password,
@@ -76,8 +80,13 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
       await updateProfile(credential.user, { displayName: input.full_name.trim() });
     }
 
-    return authResponse(credential.user);
+    return await authResponse(credential.user);
   } catch (error) {
+    // Roll back the Firebase account if anything after creation failed, so a
+    // failed Jobyn provisioning does not leave an orphaned, unusable account.
+    if (credential) {
+      await deleteUser(credential.user).catch(() => undefined);
+    }
     if (error instanceof ApiError) throw error;
     throw firebaseAuthError(error);
   }
